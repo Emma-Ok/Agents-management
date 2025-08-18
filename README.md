@@ -42,6 +42,3 @@ Built with modern technologies and designed following **Hexagonal Architecture**
 - Delete agents (removes all related documents automatically)  
 
 ---
-
-    B --> D[(Azure Blob Storage)]
-    B --> E[(Vector Database)]
