@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import BinaryIO
+from typing import BinaryIO, Dict, Any, Optional
 
 @dataclass
 class UploadDocumentDTO:
@@ -12,6 +12,7 @@ class UploadDocumentDTO:
     file: BinaryIO
     content_type: str
     file_size: int
+    metadata: Optional[Dict[str, Any]] = None
 
 @dataclass
 class DocumentResponseDTO:

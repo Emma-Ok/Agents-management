@@ -1,70 +1,195 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
-from typing import Optional
+from typing import Optional, List
 import os
+import logging
 from src.application.commands.uploadDocument import UploadDocumentCommand
 from src.application.commands.deleteDocument import DeleteDocumentCommand
 from src.application.dto.documentDto import UploadDocumentDTO
 from src.domain.value_objects.documentType import DocumentType
-from src.domain.exceptions.domainExceptions import InvalidFileTypeException
+from src.domain.exceptions.domainExceptions import InvalidFileTypeException, DocumentNotFoundException, AgentNotFoundException
 from src.infrastructure.api.dependencies import (
     get_upload_document_command,
     get_delete_document_command
 )
 from src.infrastructure.config.settings import get_settings
+from src.shared.utils.validators import FileValidator, DocumentValidator
+from src.shared.utils.formatter import ResponseFormatter, FileFormatter
 
 router = APIRouter(prefix="/documents", tags=["documents"])
-
+logger = logging.getLogger(__name__)
 settings = get_settings()
 
 @router.post(
     "/upload",
     status_code=status.HTTP_201_CREATED,
-    summary="Upload a document",
-    description="Upload a document for a specific agent"
+    summary="Upload a document to an agent",
+    description="Upload a document (PDF, DOCX, XLSX, PPTX, TXT, CSV) for a specific agent"
 )
 async def upload_document(
     agent_id: str = Form(..., description="ID of the agent"),
-    file: UploadFile = File(..., description="Document to upload"),
+    file: UploadFile = File(..., description="Document file to upload"),
+    description: Optional[str] = Form(None, description="Optional description for the document"),
     command: UploadDocumentCommand = Depends(get_upload_document_command)
 ):
     """
     Upload a document for an agent.
     
-    Supported formats: PDF, DOCX, XLSX, PPTX
-    Maximum file size: 10MB
+    **Supported formats:** PDF, DOCX, XLSX, PPTX, TXT, CSV
+    **Maximum file size:** 10MB
+    
+    **Process:**
+    1. Validates file type and size
+    2. Uploads to S3 storage
+    3. Saves metadata to MongoDB
+    4. Returns document information with URLs
     """
-    # Validar extensión
-    extension = os.path.splitext(file.filename)[1]
-    if not DocumentType.is_valid_extension(extension):
-        raise InvalidFileTypeException(extension)
-    
-    # Validar tamaño
-    file_content = await file.read()
-    file_size = len(file_content)
-    
-    if file_size > settings.max_file_size_bytes:
-        raise InvalidFileTypeException(f"File too large: {file_size} bytes")
-    
-    # Resetear el archivo para lectura
-    await file.seek(0)
-    
-    dto = UploadDocumentDTO(
-        agent_id=agent_id,
-        filename=file.filename,
-        file=file.file,
-        content_type=file.content_type or "application/octet-stream",
-        file_size=file_size
-    )
-    
-    result = await command.execute(dto)
-    return result
+    try:
+        logger.info(f"Starting document upload for agent {agent_id}: {file.filename}")
+        
+        # 1. Validar Agent ID
+        is_valid, error_msg = DocumentValidator.validate_agent_id(agent_id)
+        if not is_valid:
+            logger.warning(f"Invalid agent ID: {error_msg}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=ResponseFormatter.error_response(
+                    error_message=error_msg,
+                    error_code="INVALID_AGENT_ID"
+                )
+            )
+        
+        # 2. Validar archivo
+        is_valid, file_type, error_msg = FileValidator.validate_file(
+            file=file,
+            max_size_mb=settings.max_file_size_mb,
+            allowed_extensions=settings.allowed_extensions
+        )
+        
+        if not is_valid:
+            logger.warning(f"File validation failed: {error_msg}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=ResponseFormatter.error_response(
+                    error_message=error_msg,
+                    error_code="INVALID_FILE",
+                    details={
+                        "filename": file.filename,
+                        "content_type": file.content_type,
+                        "max_size_mb": settings.max_file_size_mb,
+                        "allowed_extensions": settings.allowed_extensions
+                    }
+                )
+            )
+        
+        # 3. Leer contenido del archivo para validaciones adicionales
+        file_content = await file.read()
+        file_size = len(file_content)
+        
+        # Validar contenido si es posible
+        content_valid, content_error = FileValidator.validate_file_content(file_content, file.filename)
+        if not content_valid:
+            logger.warning(f"File content validation failed: {content_error}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=ResponseFormatter.error_response(
+                    error_message=content_error,
+                    error_code="INVALID_FILE_CONTENT"
+                )
+            )
+        
+        # 4. Resetear el archivo para lectura en el comando
+        await file.seek(0)
+        
+        # 5. Preparar metadata adicional
+        metadata = {
+            "description": description or "",
+            "original_size": file_size,
+            "content_type": file.content_type or "application/octet-stream"
+        }
+        
+        # Validar metadata
+        metadata_valid, metadata_error = DocumentValidator.validate_document_metadata(metadata)
+        if not metadata_valid:
+            logger.warning(f"Metadata validation failed: {metadata_error}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=ResponseFormatter.error_response(
+                    error_message=metadata_error,
+                    error_code="INVALID_METADATA"
+                )
+            )
+        
+        # 6. Crear DTO para el comando
+        dto = UploadDocumentDTO(
+            agent_id=agent_id,
+            filename=file.filename,
+            file=file.file,
+            content_type=file.content_type or "application/octet-stream",
+            file_size=file_size,
+            metadata=metadata
+        )
+        
+        # 7. Ejecutar comando de upload
+        logger.info(f"Executing upload command for {file.filename}")
+        result = await command.execute(dto)
+        
+        # 8. Formatear respuesta exitosa
+        file_info = FileFormatter.extract_file_info(
+            filename=file.filename,
+            file_size=file_size,
+            content_type=file.content_type or "application/octet-stream"
+        )
+        
+        response_data = {
+            "document": result,
+            "file_info": file_info,
+            "upload_status": "completed"
+        }
+        
+        logger.info(f"Document uploaded successfully: {result.id}")
+        return ResponseFormatter.success_response(
+            data=response_data,
+            message=f"Documento '{file.filename}' subido exitosamente"
+        )
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except AgentNotFoundException as e:
+        logger.error(f"Agent not found: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=ResponseFormatter.error_response(
+                error_message=str(e),
+                error_code="AGENT_NOT_FOUND"
+            )
+        )
+    except InvalidFileTypeException as e:
+        logger.error(f"Invalid file type: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=ResponseFormatter.error_response(
+                error_message=str(e),
+                error_code="INVALID_FILE_TYPE"
+            )
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error during upload: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ResponseFormatter.error_response(
+                error_message="Error interno del servidor durante la subida",
+                error_code="UPLOAD_ERROR",
+                details={"error": str(e)}
+            )
+        )
 
 @router.delete(
     "/{document_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
+    status_code=status.HTTP_200_OK,
     summary="Delete a document",
-    description="Delete a specific document"
+    description="Delete a specific document from storage and database"
 )
 async def delete_document(
     document_id: str,
@@ -73,7 +198,138 @@ async def delete_document(
     """
     Delete a document.
     
-    This will remove the document from both the database and S3 storage.
+    **Process:**
+    1. Validates document exists
+    2. Removes file from S3 storage
+    3. Removes metadata from MongoDB
+    
+    Returns confirmation of deletion.
     """
-    await command.execute(document_id)
-    return None
+    try:
+        logger.info(f"Starting document deletion: {document_id}")
+        
+        # Ejecutar comando de eliminación
+        success = await command.execute(document_id)
+        
+        if success:
+            logger.info(f"Document deleted successfully: {document_id}")
+            return ResponseFormatter.success_response(
+                data={"document_id": document_id, "deleted": True},
+                message="Documento eliminado exitosamente"
+            )
+        else:
+            logger.warning(f"Document deletion failed: {document_id}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=ResponseFormatter.error_response(
+                    error_message="No se pudo eliminar el documento",
+                    error_code="DELETION_FAILED"
+                )
+            )
+            
+    except DocumentNotFoundException as e:
+        logger.error(f"Document not found: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=ResponseFormatter.error_response(
+                error_message=str(e),
+                error_code="DOCUMENT_NOT_FOUND"
+            )
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error during deletion: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ResponseFormatter.error_response(
+                error_message="Error interno del servidor durante la eliminación",
+                error_code="DELETION_ERROR",
+                details={"error": str(e)}
+            )
+        )
+
+@router.get(
+    "/{document_id}",
+    summary="Get document information",
+    description="Get detailed information about a specific document"
+)
+async def get_document_info(document_id: str):
+    """
+    Get detailed information about a document.
+    
+    Returns document metadata, S3 URL, and other relevant information.
+    """
+    try:
+        logger.info(f"Getting document info: {document_id}")
+        
+        # TODO: Implementar query para obtener documento
+        # document = await get_document_query.execute(document_id)
+        
+        # Por ahora, placeholder
+        return ResponseFormatter.success_response(
+            data={"document_id": document_id, "status": "found"},
+            message="Información del documento obtenida exitosamente"
+        )
+        
+    except DocumentNotFoundException as e:
+        logger.error(f"Document not found: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=ResponseFormatter.error_response(
+                error_message=str(e),
+                error_code="DOCUMENT_NOT_FOUND"
+            )
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error getting document info: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ResponseFormatter.error_response(
+                error_message="Error interno del servidor",
+                error_code="GET_DOCUMENT_ERROR",
+                details={"error": str(e)}
+            )
+        )
+
+@router.get(
+    "/",
+    summary="List documents",
+    description="List all documents with optional filtering"
+)
+async def list_documents(
+    agent_id: Optional[str] = None,
+    limit: int = 20,
+    offset: int = 0
+):
+    """
+    List documents with optional filtering by agent.
+    
+    **Parameters:**
+    - agent_id: Filter by specific agent (optional)
+    - limit: Maximum number of documents to return
+    - offset: Number of documents to skip
+    """
+    try:
+        logger.info(f"Listing documents: agent_id={agent_id}, limit={limit}, offset={offset}")
+        
+        # TODO: Implementar query para listar documentos
+        # documents = await list_documents_query.execute(agent_id, limit, offset)
+        
+        # Por ahora, placeholder
+        return ResponseFormatter.paginated_response(
+            data=[],
+            total=0,
+            page=offset // limit + 1,
+            per_page=limit,
+            message="Lista de documentos obtenida exitosamente"
+        )
+        
+    except Exception as e:
+        logger.error(f"Unexpected error listing documents: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ResponseFormatter.error_response(
+                error_message="Error interno del servidor",
+                error_code="LIST_DOCUMENTS_ERROR",
+                details={"error": str(e)}
+            )
+        )

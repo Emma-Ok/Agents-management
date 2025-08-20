@@ -6,6 +6,8 @@ class DocumentType(Enum):
     DOCX = "docx"
     XLSX = "xlsx"
     PPTX = "pptx"
+    TXT = "txt"
+    CSV = "csv"
 
     @classmethod
     def from_extension(cls, extension: str) -> "DocumentType":
