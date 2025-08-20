@@ -16,10 +16,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI Agents Manager",
+  title: "AI Agents Management",
   description: "Gestiona tus agentes de inteligencia artificial y sus documentos",
   keywords: ["IA", "Agentes", "Documentos", "Gestión", "FastAPI", "Next.js"],
-  authors: [{ name: "AI Agents Team" }],
+  authors: [{ name: "Emmanuel Valbuena" }],
 };
 
 export const viewport = {
