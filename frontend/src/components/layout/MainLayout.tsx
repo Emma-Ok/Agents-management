@@ -21,7 +21,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                 <span className="text-white font-bold text-sm">🤖</span>
               </div>
               <span className="text-xl font-semibold text-gray-900">
-                AI Agent Manager
+                AI Agents Management
               </span>
             </div>
 
@@ -35,34 +35,8 @@ export function MainLayout({ children }: MainLayoutProps) {
                 <span className="mr-2">🤖</span>
                 Agents
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-              >
-                <span className="mr-2">⚙️</span>
-                Settings
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-              >
-                <span className="mr-2">❓</span>
-                Help
-              </Button>
+             
             </nav>
-
-            {/* Botón de modo oscuro */}
-            <div className="flex items-center">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-9 h-9 p-0"
-              >
-                <span className="text-lg">🌙</span>
-              </Button>
-            </div>
           </div>
         </div>
       </header>

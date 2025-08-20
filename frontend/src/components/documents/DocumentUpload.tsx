@@ -225,7 +225,7 @@ export function DocumentUpload({ agentId, onUploadComplete, onClose }: DocumentU
             
             <div className="text-xs text-gray-500">
               <p>Supported formats: PDF, DOCX, XLSX, PPTX, TXT, CSV</p>
-              <p>Maximum file size: 20MB • Maximum 50 files per agent</p>
+              <p>Maximum file size: 10MB</p>
             </div>
           </div>
         </div>

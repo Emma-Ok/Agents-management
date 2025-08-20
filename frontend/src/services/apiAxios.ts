@@ -298,7 +298,6 @@ class ApiService {
       throw error;
     }
   }
-
   // Eliminar un agente
   async deleteAgent(id: string): Promise<void> {
     try {

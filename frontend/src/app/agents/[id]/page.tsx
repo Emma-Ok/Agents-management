@@ -1,4 +1,3 @@
-// Página individual de agente - Basado en diseño Figma
 'use client';
 
 import React, { useState } from 'react';

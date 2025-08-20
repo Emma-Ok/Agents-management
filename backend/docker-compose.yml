@@ -61,25 +61,7 @@ services:
       retries: 3
       start_period: 40s
 
-  # MongoDB Express para administración (opcional)
-  mongo-express:
-    image: mongo-express:1.0.0
-    container_name: ai_agents_mongo_express
-    restart: always
-    ports:
-      - "8081:8081"
-    environment:
-      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
-      ME_CONFIG_MONGODB_ADMINPASSWORD: admin123
-      ME_CONFIG_MONGODB_URL: mongodb://admin:admin123@mongodb:27017/
-      ME_CONFIG_BASICAUTH: false
-    depends_on:
-      - mongodb
-    networks:
-      - ai_agents_network
-    profiles:
-      - tools  # Solo se ejecuta con: docker-compose --profile tools up
-
+  
 # Volúmenes persistentes
 volumes:
   mongodb_data:
