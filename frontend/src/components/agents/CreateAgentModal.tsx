@@ -1,9 +1,10 @@
-// Modal para crear un nuevo agente
+// Modal para crear un nuevo agente - Basado en diseño Figma
 
 import React, { useState } from 'react';
 import { CreateAgentDTO, Agent } from '@/types';
 import { Button } from '@/components/ui/Button';
-import { validateAgentName, validateAgentPrompt } from '@/lib/utils';
+import { validateAgentNameLegacy, validateAgentPromptLegacy } from '@/lib/validations';
+import { useAgentOperationNotifications } from '@/hooks/useOperationNotifications';
 
 interface CreateAgentModalProps {
   isOpen: boolean;
@@ -18,33 +19,49 @@ export function CreateAgentModal({ isOpen, onClose, onSubmit }: CreateAgentModal
   });
   const [errors, setErrors] = useState<{ name?: string; prompt?: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { createAgent } = useAgentOperationNotifications();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validar formulario
-    const nameError = validateAgentName(formData.name);
-    const promptError = validateAgentPrompt(formData.prompt);
+    const nameError = validateAgentNameLegacy(formData.name);
+    const promptError = validateAgentPromptLegacy(formData.prompt);
     
     if (nameError || promptError) {
       setErrors({ name: nameError || undefined, prompt: promptError || undefined });
       return;
     }
 
+    setIsSubmitting(true);
+    setErrors({});
+    
+    // Usar el sistema de notificaciones mejorado
+    const operation = createAgent(formData.name, {
+      onSuccess: () => {
+        // Limpiar formulario y cerrar modal
+        setFormData({ name: '', prompt: '' });
+        onClose();
+        setIsSubmitting(false);
+      },
+      onError: (error) => {
+        // Extraer mensaje específico del error
+        const errorMessage = (error as any)?.details?.action 
+          ? `${error.message}` 
+          : error.message;
+        
+        setErrors({ 
+          name: errorMessage
+        });
+        setIsSubmitting(false);
+      }
+    });
+
     try {
-      setIsSubmitting(true);
-      setErrors({});
-      await onSubmit(formData);
-      
-      // Limpiar formulario y cerrar modal
-      setFormData({ name: '', prompt: '' });
-      onClose();
+      const result = await onSubmit(formData);
+      operation.complete(result);
     } catch (error) {
-      setErrors({ 
-        name: error instanceof Error ? error.message : 'Error al crear agente' 
-      });
-    } finally {
-      setIsSubmitting(false);
+      operation.error(error as Error);
     }
   };
 
@@ -58,89 +75,96 @@ export function CreateAgentModal({ isOpen, onClose, onSubmit }: CreateAgentModal
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg max-w-lg w-full shadow-xl">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">
-            Crear Nuevo Agente
+            Create Agent
           </h2>
           <button
             onClick={handleClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
+        {/* Subtítulo */}
+        <div className="px-6 pt-4">
+          <p className="text-sm text-gray-600">
+            Create a new AI agent with a custom prompt
+          </p>
+        </div>
+
         {/* Formulario */}
-        <form onSubmit={handleSubmit} className="p-6">
-          <div className="space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 pt-4">
+          <div className="space-y-5">
             {/* Nombre del Agente */}
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                Nombre del Agente *
+              <label htmlFor="name" className="block text-sm font-medium text-gray-900 mb-2">
+                Name *
               </label>
               <input
                 type="text"
                 id="name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                  errors.name ? 'border-red-300' : 'border-gray-300'
+                className={`w-full px-3 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition-colors ${
+                  errors.name ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
                 }`}
-                placeholder="Ej: Asistente de Documentos"
+                placeholder="Enter agent name"
                 disabled={isSubmitting}
               />
               {errors.name && (
-                <p className="mt-1 text-sm text-red-600">{errors.name}</p>
+                <p className="mt-1.5 text-sm text-red-600">{errors.name}</p>
               )}
             </div>
 
-            {/* Prompt del Agente */}
+            {/* System Prompt */}
             <div>
-              <label htmlFor="prompt" className="block text-sm font-medium text-gray-700 mb-2">
-                Prompt del Agente *
+              <label htmlFor="prompt" className="block text-sm font-medium text-gray-900 mb-2">
+                System Prompt *
               </label>
               <textarea
                 id="prompt"
-                rows={4}
+                rows={5}
                 value={formData.prompt}
                 onChange={(e) => setFormData({ ...formData, prompt: e.target.value })}
-                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                  errors.prompt ? 'border-red-300' : 'border-gray-300'
+                className={`w-full px-3 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition-colors resize-none ${
+                  errors.prompt ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
                 }`}
-                placeholder="Describe las instrucciones y comportamiento que quieres que tenga tu agente..."
+                placeholder="Enter the system prompt for this agent"
                 disabled={isSubmitting}
               />
               {errors.prompt && (
-                <p className="mt-1 text-sm text-red-600">{errors.prompt}</p>
+                <p className="mt-1.5 text-sm text-red-600">{errors.prompt}</p>
               )}
-              <p className="mt-1 text-sm text-gray-500">
-                Caracteres: {formData.prompt.length}/5000
+              <p className="mt-1.5 text-xs text-gray-500">
+                This prompt will define how the agent behaves and responds to user queries.
               </p>
             </div>
           </div>
 
           {/* Acciones */}
-          <div className="flex gap-3 mt-6">
+          <div className="flex justify-end gap-3 mt-8">
             <Button
               type="button"
               variant="outline"
               onClick={handleClose}
               disabled={isSubmitting}
-              className="flex-1"
+              className="px-6"
             >
-              Cancelar
+              Cancel
             </Button>
             <Button
               type="submit"
               isLoading={isSubmitting}
               disabled={isSubmitting}
-              className="flex-1"
+              className="px-6 bg-black hover:bg-gray-800 text-white"
             >
-              {isSubmitting ? 'Creando...' : 'Crear Agente'}
+              {isSubmitting ? 'Creating...' : 'Create Agent'}
             </Button>
           </div>
         </form>

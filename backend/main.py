@@ -12,7 +12,8 @@ from src.infrastructure.adapters.persistence.mongodb.connection import get_mongo
 from src.infrastructure.api.middleware.errorHandler import (
     domain_exception_handler,
     validation_exception_handler,
-	http_exception_handler
+    http_exception_handler,
+    generic_exception_handler
 )
 from src.infrastructure.api.routers import agents, documents
 from src.domain.exceptions.domainExceptions import DomainException
@@ -71,9 +72,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Importar middleware de base de datos
+from src.infrastructure.api.middleware.databaseErrorHandler import DatabaseErrorMiddleware
+
+# Agregar middleware de base de datos
+app.add_middleware(DatabaseErrorMiddleware)
+
+# Registrar exception handlers (orden importante: más específico a más genérico)
 app.add_exception_handler(DomainException, domain_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(HTTPException, http_exception_handler)
+app.add_exception_handler(Exception, generic_exception_handler)
 
 # Registrar routers
 app.include_router(agents.router, prefix=settings.api_prefix)

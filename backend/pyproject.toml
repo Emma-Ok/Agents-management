@@ -31,23 +31,24 @@ select = ["E", "F", "I", "N", "W"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = [
+    "unit: Pruebas unitarias rápidas",
+    "integration: Pruebas de integración",
+    "api: Pruebas de endpoints API"
+]
 
-# .env.example
-APP_NAME=AI_Agents_Manager
-DEBUG=True
-HOST=0.0.0.0
-PORT=8000
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "tests/*",
+    "*/venv/*",
+    "*/__pycache__/*"
+]
 
-# MongoDB
-MONGODB_URL=mongodb://localhost:27017
-MONGODB_DB_NAME=ai_agents_db
-
-# AWS S3
-AWS_ACCESS_KEY_ID=your_key
-AWS_SECRET_ACCESS_KEY=your_secret
-AWS_S3_BUCKET_NAME=ai-agents-docs
-AWS_S3_REGION=us-east-1
-
-# File Upload
-MAX_FILE_SIZE_MB=10
-ALLOWED_EXTENSIONS=pdf,docx,xlsx,pptx
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError"
+]

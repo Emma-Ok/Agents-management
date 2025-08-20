@@ -21,6 +21,8 @@ from src.application.commands.uploadDocument import UploadDocumentCommand
 from src.application.commands.deleteDocument import DeleteDocumentCommand
 from src.application.queries.listAgents import ListAgentsQuery
 from src.application.queries.getAgentDetail import GetAgentDetailQuery
+from src.application.queries.getDocument import GetDocumentQuery
+from src.application.queries.listDocuments import ListDocumentsQuery
 
 
 class Container:
@@ -37,7 +39,12 @@ class Container:
     async def database(self) -> AsyncIOMotorDatabase:
         """Obtiene la instancia de la base de datos MongoDB"""
         if self._database is None:
-            self._database = await get_database()
+            try:
+                self._database = await get_database()
+                if self._database is None:
+                    raise Exception("Database connection returned None")
+            except Exception as e:
+                raise Exception(f"Failed to initialize database connection: {e}")
         return self._database
     
     @property
@@ -72,7 +79,8 @@ class Container:
     async def create_agent_command(self) -> CreateAgentCommand:
         """Obtiene el command handler para crear agentes"""
         agent_repo = await self.agent_repository
-        return CreateAgentCommand(agent_repo)
+        file_storage = self.file_storage
+        return CreateAgentCommand(agent_repo, file_storage)
     
     async def update_agent_command(self) -> UpdateAgentCommand:
         """Obtiene el command handler para actualizar agentes"""
@@ -104,14 +112,24 @@ class Container:
     async def list_agents_query(self) -> ListAgentsQuery:
         """Obtiene el query handler para listar agentes"""
         agent_repo = await self.agent_repository
-        document_repo = await self.document_repository
-        return ListAgentsQuery(agent_repo, document_repo)
+        return ListAgentsQuery(agent_repo)
     
     async def get_agent_detail_query(self) -> GetAgentDetailQuery:
         """Obtiene el query handler para obtener detalle de agente"""
         agent_repo = await self.agent_repository
         document_repo = await self.document_repository
         return GetAgentDetailQuery(agent_repo, document_repo)
+    
+    async def get_document_query(self) -> GetDocumentQuery:
+        """Obtiene el query handler para obtener detalle de documento"""
+        document_repo = await self.document_repository
+        return GetDocumentQuery(document_repo)
+    
+    async def list_documents_query(self) -> ListDocumentsQuery:
+        """Obtiene el query handler para listar documentos"""
+        document_repo = await self.document_repository
+        agent_repo = await self.agent_repository
+        return ListDocumentsQuery(document_repo, agent_repo)
 
 
 # Singleton del contenedor

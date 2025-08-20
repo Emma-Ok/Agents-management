@@ -14,15 +14,21 @@ class FileValidator:
         'pdf': ['application/pdf'],
         'docx': [
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'application/vnd.ms-word.document.macroEnabled.12'
+            'application/vnd.ms-word.document.macroEnabled.12',
+            'application/zip',  # DOCX son archivos ZIP
+            'application/x-zip-compressed'  # Variante de ZIP
         ],
         'xlsx': [
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'application/vnd.ms-excel.sheet.macroEnabled.12'
+            'application/vnd.ms-excel.sheet.macroEnabled.12',
+            'application/zip',  # XLSX son archivos ZIP
+            'application/x-zip-compressed'  # Variante de ZIP
         ],
         'pptx': [
             'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-            'application/vnd.ms-powerpoint.presentation.macroEnabled.12'
+            'application/vnd.ms-powerpoint.presentation.macroEnabled.12',
+            'application/zip',  # PPTX son archivos ZIP
+            'application/x-zip-compressed'  # Variante de ZIP
         ],
         'txt': ['text/plain'],
         'csv': ['text/csv', 'application/csv']
@@ -103,12 +109,31 @@ class FileValidator:
             file_extension = cls._get_file_extension(filename)
             
             if not cls._is_valid_mime_type(mime_type, file_extension):
-                return False, f"El contenido del archivo no coincide con su extensión. Detectado: {mime_type}"
+                # Mensaje más claro y específico
+                expected_types = cls.ALLOWED_TYPES.get(file_extension, [])
+                expected_str = ', '.join(expected_types)
+                
+                return False, (
+                    f"El archivo '{filename}' parece estar dañado o tener formato incorrecto. "
+                    f"Detectado: {mime_type}, esperado: {expected_str}. "
+                    f"Intenta convertir el archivo al formato correcto o usar un archivo diferente."
+                )
             
             return True, ""
             
         except Exception as e:
-            # Si python-magic no está disponible, omitir esta validación
+            # Si python-magic no está disponible o falla, hacer validación más permisiva
+            # Solo validar que el archivo no esté completamente vacío
+            if len(file_content) == 0:
+                return False, "El archivo está vacío"
+            
+            # Para archivos pequeños (< 100 bytes), ser más estricto
+            if len(file_content) < 100:
+                return False, "El archivo parece estar incompleto o dañado"
+            
+            # Para otros casos, permitir el archivo con advertencia en logs
+            import logging
+            logging.warning(f"No se pudo validar contenido de {filename}: {str(e)}")
             return True, ""
 
 class AgentValidator:

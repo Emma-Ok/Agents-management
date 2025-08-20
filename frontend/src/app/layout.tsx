@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { QueryProvider } from "@/contexts/QueryProvider";
+import { ToastProvider } from "@/contexts/ToastProvider";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,6 +18,13 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "AI Agents Manager",
   description: "Gestiona tus agentes de inteligencia artificial y sus documentos",
+  keywords: ["IA", "Agentes", "Documentos", "Gestión", "FastAPI", "Next.js"],
+  authors: [{ name: "AI Agents Team" }],
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({
@@ -27,7 +37,12 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <ErrorBoundary>
+          <QueryProvider>
+            {children}
+            <ToastProvider />
+          </QueryProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );

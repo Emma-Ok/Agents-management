@@ -10,6 +10,8 @@ from src.application.commands.uploadDocument import UploadDocumentCommand
 from src.application.commands.deleteDocument import DeleteDocumentCommand
 from src.application.queries.listAgents import ListAgentsQuery
 from src.application.queries.getAgentDetail import GetAgentDetailQuery
+from src.application.queries.getDocument import GetDocumentQuery
+from src.application.queries.listDocuments import ListDocumentsQuery
 
 # Obtener container
 def get_app_container() -> Container:
@@ -59,3 +61,15 @@ async def get_agent_detail_query(
 ) -> GetAgentDetailQuery:
     """Inyecta la query para obtener detalle de agente"""
     return await container.get_agent_detail_query()
+
+async def get_document_query(
+    container: Container = Depends(get_app_container)
+) -> GetDocumentQuery:
+    """Inyecta la query para obtener detalle de documento"""
+    return await container.get_document_query()
+
+async def get_list_documents_query(
+    container: Container = Depends(get_app_container)
+) -> ListDocumentsQuery:
+    """Inyecta la query para listar documentos"""
+    return await container.list_documents_query()

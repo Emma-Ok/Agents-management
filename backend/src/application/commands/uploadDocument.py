@@ -1,4 +1,6 @@
 import os
+import unicodedata
+import re
 from src.domain.entities.document import Document
 from src.domain.value_objects.agentId import AgentId
 from src.domain.value_objects.documentType import DocumentType
@@ -10,6 +12,47 @@ from ..dto.documentDto import UploadDocumentDTO, DocumentResponseDTO
 import logging
 
 logger = logging.getLogger(__name__)
+
+def sanitize_filename_for_s3_metadata(filename: str) -> str:
+    """
+    Sanitiza un nombre de archivo para que sea compatible con metadatos de S3.
+    S3 metadata solo acepta caracteres ASCII.
+    
+    Args:
+        filename: Nombre del archivo original
+        
+    Returns:
+        Nombre sanitizado que solo contiene caracteres ASCII
+    """
+    if not filename:
+        return "unknown_file"
+    
+    # Normalizar unicode y remover acentos
+    normalized = unicodedata.normalize('NFD', filename)
+    ascii_text = ''.join(c for c in normalized if unicodedata.category(c) != 'Mn')
+    
+    # Reemplazar caracteres especiales comunes
+    replacements = {
+        'ñ': 'n', 'Ñ': 'N',
+        'ç': 'c', 'Ç': 'C',
+        'ß': 'ss',
+        'œ': 'oe', 'æ': 'ae'
+    }
+    
+    for original, replacement in replacements.items():
+        ascii_text = ascii_text.replace(original, replacement)
+    
+    # Remover cualquier carácter no ASCII restante
+    ascii_text = re.sub(r'[^\x00-\x7F]', '_', ascii_text)
+    
+    # Limpiar caracteres problemáticos para metadatos
+    ascii_text = re.sub(r'[<>:"/\\|?*]', '_', ascii_text)
+    
+    # Asegurar que no esté vacío
+    if not ascii_text.strip():
+        return "sanitized_file"
+        
+    return ascii_text.strip()
 
 class UploadDocumentCommand:
     """
@@ -61,6 +104,10 @@ class UploadDocumentCommand:
         # Generar la clave S3 (path en el bucket)
         s3_key = f"agents/{dto.agent_id}/{dto.filename}"
         
+        # Sanitizar el nombre del archivo para metadatos S3
+        sanitized_filename = sanitize_filename_for_s3_metadata(dto.filename)
+        logger.info(f"Original filename: '{dto.filename}' -> Sanitized: '{sanitized_filename}'")
+        
         # Subir archivo a S3
         file_metadata = await self.file_storage.upload_file(
             file=dto.file,
@@ -68,7 +115,7 @@ class UploadDocumentCommand:
             content_type=dto.content_type,
             metadata={
                 "agent_id": dto.agent_id,
-                "original_filename": dto.filename
+                "original_filename": sanitized_filename
             }
         )
         

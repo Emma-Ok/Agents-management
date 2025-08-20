@@ -43,3 +43,10 @@ class DuplicateAgentNameException(DomainException):
     def __init__(self, name: str):
         super().__init__(f"Agent with name '{name}' already exists")
         self.name = name
+
+class AgentAlreadyExistsException(DomainException):
+    """Excepción lanzada cuando se intenta crear un agente que ya existe."""
+    
+    def __init__(self, agent_name: str):
+        self.agent_name = agent_name
+        super().__init__(f"Agent with name '{agent_name}' already exists")

@@ -1,16 +1,20 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Query
 from fastapi.responses import StreamingResponse
 from typing import Optional, List
 import os
 import logging
 from src.application.commands.uploadDocument import UploadDocumentCommand
 from src.application.commands.deleteDocument import DeleteDocumentCommand
+from src.application.queries.getDocument import GetDocumentQuery
+from src.application.queries.listDocuments import ListDocumentsQuery
 from src.application.dto.documentDto import UploadDocumentDTO
 from src.domain.value_objects.documentType import DocumentType
 from src.domain.exceptions.domainExceptions import InvalidFileTypeException, DocumentNotFoundException, AgentNotFoundException
 from src.infrastructure.api.dependencies import (
     get_upload_document_command,
-    get_delete_document_command
+    get_delete_document_command,
+    get_document_query,
+    get_list_documents_query
 )
 from src.infrastructure.config.settings import get_settings
 from src.shared.utils.validators import FileValidator, DocumentValidator
@@ -252,7 +256,10 @@ async def delete_document(
     summary="Get document information",
     description="Get detailed information about a specific document"
 )
-async def get_document_info(document_id: str):
+async def get_document_info(
+    document_id: str,
+    query: GetDocumentQuery = Depends(get_document_query)
+):
     """
     Get detailed information about a document.
     
@@ -261,12 +268,11 @@ async def get_document_info(document_id: str):
     try:
         logger.info(f"Getting document info: {document_id}")
         
-        # TODO: Implementar query para obtener documento
-        # document = await get_document_query.execute(document_id)
+        # Ejecutar query para obtener documento
+        document = await query.execute(document_id)
         
-        # Por ahora, placeholder
         return ResponseFormatter.success_response(
-            data={"document_id": document_id, "status": "found"},
+            data={"document": document},
             message="Información del documento obtenida exitosamente"
         )
         
@@ -296,33 +302,46 @@ async def get_document_info(document_id: str):
     description="List all documents with optional filtering"
 )
 async def list_documents(
-    agent_id: Optional[str] = None,
-    limit: int = 20,
-    offset: int = 0
+    agent_id: Optional[str] = Query(None, description="Filter by specific agent"),
+    skip: int = Query(0, ge=0, description="Number of documents to skip"),
+    limit: int = Query(20, ge=1, le=100, description="Maximum number of documents to return"),
+    search: Optional[str] = Query(None, description="Search term for filename"),
+    query: ListDocumentsQuery = Depends(get_list_documents_query)
 ):
     """
     List documents with optional filtering by agent.
     
     **Parameters:**
     - agent_id: Filter by specific agent (optional)
+    - skip: Number of documents to skip (pagination)
     - limit: Maximum number of documents to return
-    - offset: Number of documents to skip
+    - search: Search term for filename (optional)
     """
     try:
-        logger.info(f"Listing documents: agent_id={agent_id}, limit={limit}, offset={offset}")
+        logger.info(f"Listing documents: agent_id={agent_id}, skip={skip}, limit={limit}, search={search}")
         
-        # TODO: Implementar query para listar documentos
-        # documents = await list_documents_query.execute(agent_id, limit, offset)
+        # Ejecutar query para listar documentos
+        result = await query.execute(
+            agent_id=agent_id,
+            skip=skip,
+            limit=limit,
+            search=search
+        )
         
-        # Por ahora, placeholder
-        return ResponseFormatter.paginated_response(
-            data=[],
-            total=0,
-            page=offset // limit + 1,
-            per_page=limit,
+        return ResponseFormatter.success_response(
+            data=result,
             message="Lista de documentos obtenida exitosamente"
         )
         
+    except AgentNotFoundException as e:
+        logger.error(f"Agent not found: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=ResponseFormatter.error_response(
+                error_message=str(e),
+                error_code="AGENT_NOT_FOUND"
+            )
+        )
     except Exception as e:
         logger.error(f"Unexpected error listing documents: {e}", exc_info=True)
         raise HTTPException(

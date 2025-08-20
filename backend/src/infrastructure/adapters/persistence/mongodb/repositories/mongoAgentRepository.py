@@ -16,6 +16,8 @@ class MongoAgentRepository(AgentRepository):
     """
     
     def __init__(self, database: AsyncIOMotorDatabase):
+        if database is None:
+            raise Exception("Database cannot be None - MongoDB connection failed")
         self.collection = database["agents"]
     
     def _to_domain(self, model: dict) -> Agent:
@@ -24,7 +26,7 @@ class MongoAgentRepository(AgentRepository):
             id=AgentId(model["_id"]),
             name=model["name"],
             prompt=model["prompt"],
-            documents_count=model.get("document_count", 0),
+            documents_count=model.get("documents_count", 0),
             created_at=model["created_at"],
             updated_at=model["updated_at"]
         )
