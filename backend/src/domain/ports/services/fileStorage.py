@@ -142,3 +142,16 @@ class FileStorage(ABC):
             Lista de FileMetadata
         """
         pass
+    
+    @abstractmethod
+    async def create_folder(self, folder_key: str) -> bool:
+        """
+        Crea una carpeta (prefijo) en el almacenamiento
+        
+        Args:
+            folder_key: Clave de la carpeta a crear (debe terminar en /)
+        
+        Returns:
+            True si se creó correctamente
+        """
+        pass

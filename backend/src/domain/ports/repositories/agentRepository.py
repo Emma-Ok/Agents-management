@@ -36,7 +36,7 @@ class AgentRepository(ABC):
         pass
 
     @abstractmethod
-    def delete_agent(self, agent_id: AgentId) -> bool:
+    async def delete_agent(self, agent_id: AgentId) -> bool:
         """Elimina un agente por su ID."""
         pass
 

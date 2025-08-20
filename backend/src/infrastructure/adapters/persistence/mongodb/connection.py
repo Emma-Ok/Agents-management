@@ -20,12 +20,20 @@ class MongoDBConnection:
     async def connect(self):
         """Establece la conexión con MongoDB Atlas"""
         try:
-            # Crear cliente usando Motor para async operations
+            # Crear cliente usando Motor para async operations con configuración SSL mejorada
             self.client = motor.motor_asyncio.AsyncIOMotorClient(
                 self.settings.mongodb_url,
                 server_api=ServerApi('1'),
                 maxPoolSize=self.settings.mongodb_max_pool_size,
-                minPoolSize=self.settings.mongodb_min_pool_size
+                minPoolSize=self.settings.mongodb_min_pool_size,
+                # Configuración SSL/TLS mejorada
+               tls=True,  # Usar TLS en lugar de ssl=True
+                tlsAllowInvalidCertificates=False,  # Validar certificados
+                serverSelectionTimeoutMS=30000,  # 30 segundos timeout
+                connectTimeoutMS=30000,  # 30 segundos timeout de conexión
+                socketTimeoutMS=30000,  # 30 segundos timeout de socket
+                heartbeatFrequencyMS=10000,  # Heartbeat cada 10 segundos
+                retryWrites=True # 10 segundos timeout de socket
             )
             
             # Ping para verificar la conexión
@@ -36,6 +44,9 @@ class MongoDBConnection:
             
         except Exception as e:
             logger.error(f"Failed to connect to MongoDB Atlas: {e}")
+            # Limpiar el cliente si la conexión falló
+            self.client = None
+            self.database = None
             raise
     
     def test_sync_connection(self):
@@ -64,16 +75,53 @@ class MongoDBConnection:
         try:
             # Índices para la colección de agentes
             agents_collection = self.database.agents
+            
+            # Índice único en el nombre del agente
             await agents_collection.create_index("name", unique=True)
-            await agents_collection.create_index("created_at")
+            
+            # Índice en fecha de creación para ordenamiento
+            await agents_collection.create_index([("created_at", -1)])
+            
+            # Índice en fecha de actualización
+            await agents_collection.create_index("updated_at")
+            
+            # Índice compuesto para búsquedas por nombre (case-insensitive)
+            await agents_collection.create_index([("name", "text")])
+            
+            logger.info("Agents collection indexes created")
             
             # Índices para la colección de documentos
             documents_collection = self.database.documents
-            await documents_collection.create_index("agent_id")
-            await documents_collection.create_index("s3_key", unique=True)
-            await documents_collection.create_index("created_at")
             
-            logger.info("Database indexes created successfully")
+            # Índice en agent_id para queries por agente (más importante)
+            await documents_collection.create_index("agent_id")
+            
+            # Índice único en s3_key para evitar duplicados
+            await documents_collection.create_index("s3_key", unique=True)
+            
+            # Índice en fecha de creación para ordenamiento
+            await documents_collection.create_index([("created_at", -1)])
+            
+            # Índice en filename para búsquedas de texto
+            await documents_collection.create_index([("filename", "text")])
+            
+            # Índice en tipo de documento
+            await documents_collection.create_index("document_type")
+            
+            # Índice compuesto para queries complejas (agent_id + created_at)
+            await documents_collection.create_index([
+                ("agent_id", 1),
+                ("created_at", -1)
+            ])
+            
+            # Índice compuesto para búsquedas por agente y tipo
+            await documents_collection.create_index([
+                ("agent_id", 1),
+                ("document_type", 1)
+            ])
+            
+            logger.info("Documents collection indexes created")
+            logger.info("All database indexes created successfully")
             
         except Exception as e:
             logger.error(f"Failed to create indexes: {e}")
@@ -95,8 +143,14 @@ async def get_mongodb() -> MongoDBConnection:
 
 async def get_database():
     """Función para obtener la base de datos - requerida por container.py"""
-    mongodb = await get_mongodb()
-    return mongodb.database
+    try:
+        mongodb = await get_mongodb()
+        if mongodb.database is None:
+            raise Exception("Database connection failed - database is None")
+        return mongodb.database
+    except Exception as e:
+        logger.error(f"Failed to get database: {e}")
+        raise Exception(f"Cannot initialize database connection: {e}")
 
 
 async def close_mongodb():

@@ -1,5 +1,6 @@
 from src.domain.entities.agent import Agent
 from src.domain.ports.repositories.agentRepository import AgentRepository
+from src.domain.ports.services.fileStorage import FileStorage
 from src.domain.exceptions.domainExceptions import DuplicateAgentNameException
 from ..dto.agentDto import CreateAgentDTO, AgentResponseDTO
 import logging
@@ -15,8 +16,9 @@ class CreateAgentCommand:
     el repositorio de agentes.
     """
 
-    def __init__(self, agent_repository: AgentRepository):
+    def __init__(self, agent_repository: AgentRepository, file_storage: FileStorage):
         self.agent_repository = agent_repository
+        self.file_storage = file_storage
 
     async def execute(self, create_agent_dto: CreateAgentDTO) -> AgentResponseDTO:
         """
@@ -50,6 +52,18 @@ class CreateAgentCommand:
         if saved_agent is None:
             logger.error("Failed to save agent.")
             raise Exception("Failed to save agent.")
+
+        # Crear carpeta en S3 para el agente (operación opcional)
+        agent_folder_key = f"agents/{saved_agent.id}/"
+        try:
+            folder_created = await self.file_storage.create_folder(agent_folder_key)
+            if folder_created:
+                logger.info(f"✅ Created S3 folder for agent: {agent_folder_key}")
+            else:
+                logger.warning(f"⚠️ Could not create S3 folder for agent: {agent_folder_key}")
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to create S3 folder for agent {saved_agent.id}: {e}")
+            # La carpeta se creará automáticamente cuando se suba el primer documento
 
         #Retornar el DTO de respuesta
         logger.info(f"Agent created successfully with ID: {saved_agent.id}")

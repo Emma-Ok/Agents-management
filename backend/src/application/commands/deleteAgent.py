@@ -49,17 +49,30 @@ class DeleteAgentCommand:
         # Eliminar archivos de S3
         if documents:
             logger.info(f"Deleting {len(documents)} files from storage")
-            # Opción 1: Eliminar carpeta completa
-            folder_key = f"agents/{agent_id}/"
-            deleted_count = await self.file_storage.delete_folder(folder_key)
-            logger.info(f"Deleted {deleted_count} files from storage")
+            try:
+                # Eliminar carpeta completa del agente
+                folder_key = f"agents/{agent_id}/"
+                deleted_count = await self.file_storage.delete_folder(folder_key)
+                logger.info(f"Deleted {deleted_count} files from storage")
+            except Exception as e:
+                logger.error(f"Error deleting files from S3: {e}")
+                # Continuar con la eliminación de BD aunque S3 falle
+                # El admin puede limpiar S3 manualmente después
+        else:
+            # Si no hay documentos, intentar eliminar la carpeta vacía del agente
+            try:
+                folder_key = f"agents/{agent_id}/"
+                await self.file_storage.delete_folder(folder_key)
+                logger.info(f"Deleted empty agent folder: {folder_key}")
+            except Exception as e:
+                logger.warning(f"Could not delete empty agent folder {folder_key}: {e}")
         
         # Eliminar documentos de la BD
         doc_count = await self.document_repository.delete_by_agent_id(agent_id_vo)
         logger.info(f"Deleted {doc_count} documents from database")
         
         # Eliminar el agente
-        result = self.agent_repository.delete_agent(agent_id_vo)
+        result = await self.agent_repository.delete_agent(agent_id_vo)
         
         if result:
             logger.info(f"Agent {agent_id} deleted successfully")

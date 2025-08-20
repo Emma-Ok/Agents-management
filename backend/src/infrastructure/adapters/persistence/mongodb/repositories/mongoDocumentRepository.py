@@ -15,6 +15,8 @@ class MongoDocumentRepository(DocumentRepository):
     """
     
     def __init__(self, database: AsyncIOMotorDatabase):
+        if database is None:
+            raise Exception("Database cannot be None - MongoDB connection failed")
         self.collection = database["documents"]
     
     def _to_domain(self, model: dict) -> Document:

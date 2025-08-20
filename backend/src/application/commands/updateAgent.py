@@ -49,7 +49,7 @@ class UpdateAgentCommand:
         logger.info(f"Agent updated successfully with ID: {existing_agent.id}")
 
         return AgentResponseDTO(
-            id=str(update_agent_dto.name),
+            id=str(existing_agent.id),
             name=existing_agent.name,
             prompt=existing_agent.prompt,
             documents_count=existing_agent.documents_count,

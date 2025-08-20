@@ -1,0 +1,94 @@
+version: '3.8'
+
+services:
+  # MongoDB service para desarrollo local
+  mongodb:
+    image: mongo:7.0
+    container_name: ai_agents_mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_INITDB_DATABASE: ai_agents_db
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    networks:
+      - ai_agents_network
+    command: mongod --auth
+
+  # Aplicación backend FastAPI
+  backend:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai_agents_backend
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      # Database
+      - MONGODB_URL=mongodb://ai_agent_user:ai_agent_pass@mongodb:27017/ai_agents_db?authSource=ai_agents_db
+      - MONGODB_DB_NAME=ai_agents_db
+      
+      # AWS S3 (usar variables de entorno del host)
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_S3_BUCKET_NAME=${AWS_S3_BUCKET_NAME:-ai-agents-documents}
+      - AWS_S3_REGION=${AWS_S3_REGION:-us-east-1}
+      
+      # App settings
+      - DEBUG=true
+      - ENVIRONMENT=development
+      - LOG_LEVEL=INFO
+      
+      # CORS
+      - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
+    volumes:
+      - ./logs:/app/logs
+      - ./uploads:/app/uploads  # Para archivos temporales
+    depends_on:
+      - mongodb
+    networks:
+      - ai_agents_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # MongoDB Express para administración (opcional)
+  mongo-express:
+    image: mongo-express:1.0.0
+    container_name: ai_agents_mongo_express
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+      ME_CONFIG_MONGODB_ADMINPASSWORD: admin123
+      ME_CONFIG_MONGODB_URL: mongodb://admin:admin123@mongodb:27017/
+      ME_CONFIG_BASICAUTH: false
+    depends_on:
+      - mongodb
+    networks:
+      - ai_agents_network
+    profiles:
+      - tools  # Solo se ejecuta con: docker-compose --profile tools up
+
+# Volúmenes persistentes
+volumes:
+  mongodb_data:
+    name: ai_agents_mongodb_data
+  mongodb_config:
+    name: ai_agents_mongodb_config
+
+# Red personalizada
+networks:
+  ai_agents_network:
+    driver: bridge
+    name: ai_agents_network
