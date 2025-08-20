@@ -83,7 +83,7 @@ class UploadDocumentCommand:
         )
         
         # Guardar en BD
-        saved_document = await self.document_repository.save_document(document)
+        saved_document = await self.document_repository.save(document)
 
         # Verificar que el documento fue guardado correctamente y tiene 'id'
         if not saved_document or not hasattr(saved_document, 'id'):
@@ -103,6 +103,6 @@ class UploadDocumentCommand:
             document_type=saved_document.document_type.value,
             file_url=saved_document.s3_url,
             file_size=saved_document.file_size,
-            file_size_mb=saved_document.get_size_mb(),
+            file_size_mb=saved_document.get_size(),
             created_at=saved_document.created_at
         )

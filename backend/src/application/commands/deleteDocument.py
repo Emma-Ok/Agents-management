@@ -36,7 +36,7 @@ class DeleteDocumentCommand:
         logger.info(f"Deleting document with ID: {document_id}")
         
         # Buscar el documento
-        document = await self.document_repository.get_document_by_id(document_id)
+        document = await self.document_repository.find_by_id(document_id)
         if not document:
             raise DocumentNotFoundException(document_id)
         
@@ -54,7 +54,7 @@ class DeleteDocumentCommand:
             # Continuar con la eliminación del registro
         
         # Eliminar registro de BD
-        result = await self.document_repository.delete_document(document_id)
+        result = await self.document_repository.delete(document_id)
         
         if result:
             # Actualizar contador del agente

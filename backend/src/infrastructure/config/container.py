@@ -88,16 +88,17 @@ class Container:
     
     async def upload_document_command(self) -> UploadDocumentCommand:
         """Obtiene el command handler para subir documentos"""
-        document_repo = await self.document_repository
         agent_repo = await self.agent_repository
+        document_repo = await self.document_repository
         file_storage = self.file_storage
-        return UploadDocumentCommand(document_repo, agent_repo, file_storage)
+        return UploadDocumentCommand(agent_repo, document_repo, file_storage)
     
     async def delete_document_command(self) -> DeleteDocumentCommand:
         """Obtiene el command handler para eliminar documentos"""
+        agent_repo = await self.agent_repository
         document_repo = await self.document_repository
         file_storage = self.file_storage
-        return DeleteDocumentCommand(document_repo, file_storage)
+        return DeleteDocumentCommand(agent_repo, document_repo, file_storage)
     
     # Query Handlers
     async def list_agents_query(self) -> ListAgentsQuery:

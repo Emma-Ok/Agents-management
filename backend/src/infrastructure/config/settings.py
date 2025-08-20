@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     aws_s3_endpoint_url: str = "https://s3.amazonaws.com"
     
     # File upload
-    allowed_extensions: List[str] = ["pdf", "docx", "xlsx", "pptx"]
+    allowed_extensions: List[str] = ["pdf", "docx", "xlsx", "pptx", "txt", "csv"]
     max_file_size_mb: int = 10
     
     # Logging
