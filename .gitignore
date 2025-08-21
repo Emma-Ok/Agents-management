@@ -423,8 +423,8 @@ test_results/
 .coverage
 htmlcov/
 
-# Scripts temporales
-test_*.py
+# Scripts temporales (excluyendo tests reales)
+# test_*.py  # COMENTADO - Los tests son importantes para el repositorio
 temp_*.py
 fix_*.py
 *_backup.*
@@ -442,8 +442,8 @@ simple_test_db.py
 uploads/
 temp_uploads/
 
-# Archivos de prueba
-*_test.*
+# Archivos de prueba temporales (excluyendo tests del proyecto)
+# *_test.*  # COMENTADO - Los tests son parte del proyecto
 *_temp.*
 
 # Backup files
