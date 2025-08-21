@@ -2,7 +2,7 @@
 Middleware para manejar errores de conexión de base de datos
 """
 import logging
-from fastapi import Request, HTTPException
+from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from typing import Callable

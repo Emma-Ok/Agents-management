@@ -6,7 +6,7 @@ from src.application.commands.updateAgent import UpdateAgentCommand
 from src.application.commands.deleteAgent import DeleteAgentCommand
 from src.application.queries.listAgents import ListAgentsQuery
 from src.application.queries.getAgentDetail import GetAgentDetailQuery
-from src.application.dto.agentDto import AgentResponseDTO, AgentListItemDTO, CreateAgentDTO, UpdateAgentDTO
+from src.application.dto.agentDto import CreateAgentDTO, UpdateAgentDTO
 from src.infrastructure.api.dependencies import (
     get_create_agent_command,
     get_update_agent_command,

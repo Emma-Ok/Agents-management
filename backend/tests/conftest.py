@@ -104,8 +104,11 @@ def mock_database():
 @pytest.fixture
 async def test_client():
     """Cliente HTTP de prueba para endpoints"""
+    from httpx import ASGITransport
     from main import app
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
 
 
