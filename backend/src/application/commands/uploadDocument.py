@@ -149,6 +149,7 @@ class UploadDocumentCommand:
             filename=saved_document.filename,
             document_type=saved_document.document_type.value,
             file_url=saved_document.s3_url,
+            s3_key=saved_document.s3_key,
             file_size=saved_document.file_size,
             file_size_mb=saved_document.get_size(),
             created_at=saved_document.created_at

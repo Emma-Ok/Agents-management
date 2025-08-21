@@ -86,6 +86,7 @@ class ListDocumentsQuery:
                 filename=doc.filename,
                 document_type=doc.document_type.value,
                 file_url=doc.s3_url,
+                s3_key=doc.s3_key,
                 file_size=doc.file_size,
                 file_size_mb=doc.get_size(),
                 created_at=doc.created_at

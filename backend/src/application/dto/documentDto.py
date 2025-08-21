@@ -22,6 +22,7 @@ class DocumentResponseDTO:
     filename: str
     document_type: str
     file_url: str
+    s3_key: str
     file_size: int
     file_size_mb: float
     created_at: datetime

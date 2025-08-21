@@ -2,7 +2,8 @@
 Contenedor de inyección de dependencias usando el patrón Dependency Injection
 """
 from functools import lru_cache
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+from typing import Optional
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from .settings import get_settings
 from src.infrastructure.adapters.persistence.mongodb.connection import get_database
@@ -30,10 +31,10 @@ class Container:
     
     def __init__(self):
         self.settings = get_settings()
-        self._database: AsyncIOMotorDatabase = None
-        self._agent_repository: AgentRepository = None
-        self._document_repository: DocumentRepository = None
-        self._file_storage: FileStorage = None
+        self._database: Optional[AsyncIOMotorDatabase] = None
+        self._agent_repository: Optional[AgentRepository] = None
+        self._document_repository: Optional[DocumentRepository] = None
+        self._file_storage: Optional[FileStorage] = None
     
     @property
     async def database(self) -> AsyncIOMotorDatabase:
@@ -69,7 +70,7 @@ class Container:
         if self._file_storage is None:
             self._file_storage = S3FileStorage(
                 bucket_name=self.settings.aws_s3_bucket_name,
-                region=self.settings.aws_s3_region,
+                region=self.settings.aws_region,
                 access_key_id=self.settings.aws_access_key_id,
                 secret_access_key=self.settings.aws_secret_access_key
             )

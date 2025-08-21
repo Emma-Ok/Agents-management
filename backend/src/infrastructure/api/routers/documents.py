@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Query
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, RedirectResponse
 from typing import Optional, List
 import os
 import logging
@@ -16,6 +16,7 @@ from src.infrastructure.api.dependencies import (
     get_document_query,
     get_list_documents_query
 )
+from src.infrastructure.config.container import get_container
 from src.infrastructure.config.settings import get_settings
 from src.shared.utils.validators import FileValidator, DocumentValidator
 from src.shared.utils.formatter import ResponseFormatter, FileFormatter
@@ -292,6 +293,66 @@ async def get_document_info(
             detail=ResponseFormatter.error_response(
                 error_message="Error interno del servidor",
                 error_code="GET_DOCUMENT_ERROR",
+                details={"error": str(e)}
+            )
+        )
+
+@router.get(
+    "/{document_id}/download",
+    summary="Download document",
+    description="Generate a presigned URL to download the document file"
+)
+async def download_document(
+    document_id: str,
+    query: GetDocumentQuery = Depends(get_document_query)
+):
+    """
+    Download a document file.
+    
+    **Process:**
+    1. Validates document exists
+    2. Generates presigned URL for secure download
+    3. Redirects to download URL
+    
+    Returns a redirect to the secure download URL.
+    """
+    try:
+        logger.info(f"Starting document download: {document_id}")
+        
+        # Obtener información del documento
+        document = await query.execute(document_id)
+        
+        # Obtener servicio de almacenamiento desde el container
+        container = get_container()
+        file_storage = container.file_storage
+        
+        # Usar la clave S3 directamente del documento
+        s3_key = document.s3_key
+        
+        # Generar URL presignada (válida por 1 hora)
+        presigned_url = await file_storage.generate_presigned_url(s3_key, expiration=3600)
+        
+        logger.info(f"Generated presigned URL for document: {document_id}")
+        
+        # Redirigir directamente a la URL de descarga
+        return RedirectResponse(url=presigned_url, status_code=307)
+        
+    except DocumentNotFoundException as e:
+        logger.error(f"Document not found for download: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=ResponseFormatter.error_response(
+                error_message=str(e),
+                error_code="DOCUMENT_NOT_FOUND"
+            )
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error during download: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ResponseFormatter.error_response(
+                error_message="Error interno del servidor durante la descarga",
+                error_code="DOWNLOAD_ERROR",
                 details={"error": str(e)}
             )
         )

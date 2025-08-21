@@ -61,6 +61,7 @@ class GetAgentDetailQuery:
                 filename=doc.filename,
                 document_type=doc.document_type.value,
                 file_url=doc.s3_url,
+                s3_key=doc.s3_key,
                 file_size=doc.file_size,
                 file_size_mb=doc.file_size / (1024 * 1024),
                 created_at=doc.created_at

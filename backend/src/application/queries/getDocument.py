@@ -44,6 +44,7 @@ class GetDocumentQuery:
             filename=document.filename,
             document_type=document.document_type.value,
             file_url=document.s3_url,
+            s3_key=document.s3_key,
             file_size=document.file_size,
             file_size_mb=document.get_size(),
             created_at=document.created_at

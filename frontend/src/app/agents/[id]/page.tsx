@@ -229,7 +229,7 @@ export default function AgentDetailPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => window.open(document.file_url, '_blank')}
+                      onClick={() => window.open(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/documents/${document.id}/download`, '_blank')}
                       className="text-gray-600 hover:text-blue-600"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

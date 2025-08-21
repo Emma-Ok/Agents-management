@@ -46,7 +46,8 @@ export function CreateAgentModal({ isOpen, onClose, onSubmit }: CreateAgentModal
       },
       onError: (error) => {
         // Extraer mensaje específico del error
-        const errorMessage = (error as any)?.details?.action 
+        const errorWithDetails = error as Error & { details?: { action?: string } };
+        const errorMessage = errorWithDetails.details?.action 
           ? `${error.message}` 
           : error.message;
         

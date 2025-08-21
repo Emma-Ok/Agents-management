@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     aws_access_key_id: str
     aws_secret_access_key: str
     aws_s3_bucket_name: str = "ai-agents-documents"
-    aws_s3_region: str = "us-east-1"
+    aws_region: str = "us-west-1"  # Cambiado de aws_s3_region a aws_region
     aws_s3_endpoint_url: str = "https://s3.amazonaws.com"
     
     # File upload

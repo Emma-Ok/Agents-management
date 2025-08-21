@@ -1,6 +1,5 @@
 from dataclasses import dataclass
-from uuid import UUID, uuid4
-from typing import Optional
+from uuid import uuid4
 
 @dataclass(frozen=True)
 class AgentId:

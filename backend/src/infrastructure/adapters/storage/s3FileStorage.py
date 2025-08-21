@@ -212,16 +212,20 @@ class S3FileStorage(FileStorage):
     
     async def generate_presigned_url(self, key: str, expiration: int = 3600) -> str:
         """Genera una URL temporal"""
-        try:
-            url = self.s3_client.generate_presigned_url(
-                'get_object',
-                Params={'Bucket': self.bucket_name, 'Key': key},
-                ExpiresIn=expiration
-            )
-            return url
-        except ClientError as e:
-            logger.error(f"Error generating presigned URL: {e}")
-            raise
+        def _generate_sync():
+            try:
+                url = self.s3_client.generate_presigned_url(
+                    'get_object',
+                    Params={'Bucket': self.bucket_name, 'Key': key},
+                    ExpiresIn=expiration
+                )
+                return url
+            except ClientError as e:
+                logger.error(f"Error generating presigned URL: {e}")
+                raise
+
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(self.executor, _generate_sync)
     
     async def list_files(self, prefix: str, max_keys: int = 100) -> List[FileMetadata]:
         """Lista archivos con un prefijo"""

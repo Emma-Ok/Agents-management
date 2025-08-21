@@ -58,7 +58,8 @@ export function EditAgentModal({ isOpen, agent, onClose, onSubmit }: EditAgentMo
         setIsSubmitting(false);
       },
       onError: (error) => {
-        const errorMessage = (error as any)?.details?.action 
+        const errorWithDetails = error as Error & { details?: { action?: string } };
+        const errorMessage = errorWithDetails.details?.action 
           ? `${error.message}` 
           : error.message;
         

@@ -1,21 +1,38 @@
-FROM python:3.11-slim
+# Dockerfile para AI Agents Backend
+FROM python:3.12-slim
 
 WORKDIR /app
 
-# Prevents Python from writing .pyc files and enables unbuffered output
+# Variables de entorno para Python
 ENV PYTHONDONTWRITEBYTECODE=1 \
-	PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app
 
-# Install system deps
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential curl && rm -rf /var/lib/apt/lists/*
+# Instalar dependencias del sistema
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    libmagic1 \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install Python deps
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+# Copiar y instalar dependencias Python
+COPY pyproject.toml ./
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -e .
 
-# Copy app
-COPY . .
+# Copiar código fuente
+COPY src/ ./src/
+COPY main.py ./
 
+# Crear directorio para logs
+RUN mkdir -p logs
+
+# Usuario no-root para seguridad
+RUN adduser --disabled-password --gecos '' appuser && \
+    chown -R appuser:appuser /app
+USER appuser
+
+# Puerto expuesto
 EXPOSE 8000
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Comando de inicio
+CMD ["python3", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
