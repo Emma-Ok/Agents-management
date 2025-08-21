@@ -25,7 +25,7 @@ class FileFormatter:
     @staticmethod
     def generate_unique_filename(original_filename: str) -> str:
         """Genera un nombre único para el archivo"""
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.utc().strftime("%Y%m%d_%H%M%S")
         unique_id = str(uuid.uuid4())[:8]
         
         name, extension = original_filename.rsplit('.', 1) if '.' in original_filename else (original_filename, '')
@@ -49,7 +49,7 @@ class FileFormatter:
             "size_bytes": file_size,
             "size_formatted": FileFormatter.format_file_size(file_size),
             "content_type": content_type,
-            "upload_timestamp": datetime.utcnow().isoformat()
+            "upload_timestamp": datetime.utc().isoformat()
         }
 
 class ResponseFormatter:
@@ -65,7 +65,7 @@ class ResponseFormatter:
         response = {
             "success": True,
             "message": message,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utc().isoformat()
         }
         
         if data is not None:
@@ -88,7 +88,7 @@ class ResponseFormatter:
             "error": {
                 "code": error_code,
                 "message": error_message,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.utc().isoformat()
             }
         }
         

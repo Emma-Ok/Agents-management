@@ -189,6 +189,9 @@ typings/
 # TypeScript cache
 *.tsbuildinfo
 
+# Next.js TypeScript
+next-env.d.ts
+
 # Optional npm cache directory
 .npm
 
