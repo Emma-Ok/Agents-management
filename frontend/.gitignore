@@ -1,6 +1,8 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# dependencies
+# ========================================
+# DEPENDENCIES
+# ========================================
 /node_modules
 /.pnp
 .pnp.*
@@ -10,32 +12,127 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
-/coverage
+# Package manager lock files (keep package-lock.json but ignore others if not using)
+# yarn.lock
+# pnpm-lock.yaml
 
-# next.js
+# ========================================
+# TESTING & COVERAGE
+# ========================================
+/coverage
+/test-results
+/.nyc_output
+*.coverage
+htmlcov/
+
+# ========================================
+# NEXT.JS BUILD OUTPUT
+# ========================================
 /.next/
 /out/
-
-# production
+/.swc/
 /build
 
-# misc
-.DS_Store
-*.pem
+# Next.js cache
+.next
 
-# debug
+# ========================================
+# PRODUCTION BUILDS
+# ========================================
+/dist
+/build
+/public/build
+
+# ========================================
+# ENVIRONMENT FILES
+# ========================================
+.env*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ========================================
+# LOGS & DEBUG FILES
+# ========================================
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+*.log
 
-# env files (can opt-in for committing if needed)
-.env*
+# ========================================
+# IDE & EDITOR FILES
+# ========================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
-# vercel
-.vercel
+# ========================================
+# OS GENERATED FILES
+# ========================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
-# typescript
+# ========================================
+# TYPESCRIPT
+# ========================================
 *.tsbuildinfo
 next-env.d.ts
+.tscache
+
+# ========================================
+# CERTIFICATES & KEYS
+# ========================================
+*.pem
+*.key
+*.cert
+*.crt
+
+# ========================================
+# DEPLOYMENT
+# ========================================
+.vercel
+.netlify
+
+# ========================================
+# CACHE DIRECTORIES
+# ========================================
+.cache
+.eslintcache
+.stylelintcache
+
+# ========================================
+# TEMPORARY FILES
+# ========================================
+*.tmp
+*.temp
+.tmp/
+.temp/
+
+# ========================================
+# REACT QUERY DEVTOOLS
+# ========================================
+.react-query/
+
+# ========================================
+# TAILWIND CSS
+# ========================================
+.tailwindcss-cache
+
+# ========================================
+# PROJECT SPECIFIC
+# ========================================
+# Archivos de prueba temporales
+test_*.tsx
+test_*.ts
+*_test.tsx
+*_test.ts
+*.backup
